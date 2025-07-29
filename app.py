@@ -8,9 +8,9 @@ CORS(app)
 
 # Connect to PostgreSQL
 def get_db_connection():
-    db_url = os.environ.get("TERRACE_WEST_DB")
+    db_url = os.environ.get("terrace_west_db")
     if not db_url:
-        raise Exception("Environment variable 'TERRACE_WEST_DB' not set.")
+        raise Exception("Environment variable 'terrace_west_db' not set.")
     return psycopg2.connect(db_url)
 
 # Create table if not exists
