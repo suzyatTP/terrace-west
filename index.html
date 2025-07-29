@@ -71,101 +71,102 @@
         const y = row.y;
         lastX = x;
 
-        const seatWrapper = document.createElementNS(svgNS, "g");
-        seatWrapper.setAttribute("cursor", "pointer");
+        if (seatNumber !== null) {
+          const seatId = `${row.label}-${seatNumber}`;
+          const group = document.createElementNS(svgNS, "g");
+          group.setAttribute("transform", `rotate(${angle * 180 / Math.PI}, ${x}, ${y})`);
+          group.setAttribute("data-seat-id", seatId);
 
-        const rect = document.createElementNS(svgNS, "rect");
-        rect.setAttribute("x", x - 20);
-        rect.setAttribute("y", y - 25);
-        rect.setAttribute("width", 40);
-        rect.setAttribute("height", 50);
-        rect.setAttribute("rx", 6);
-        rect.setAttribute("ry", 6);
-        rect.setAttribute("class", "seat");
-        rect.style.fill = "#ccc";
-        rect.style.stroke = "#999";
+          const rect = document.createElementNS(svgNS, "rect");
+          rect.setAttribute("x", x - 25);
+          rect.setAttribute("y", y - 25);
+          rect.setAttribute("width", 50);
+          rect.setAttribute("height", 50);
+          rect.setAttribute("rx", 6);
+          rect.setAttribute("ry", 6);
+          rect.setAttribute("fill", "#ccc");
+          rect.setAttribute("stroke", "#999");
 
-        const label = document.createElementNS(svgNS, "text");
-        label.setAttribute("x", x);
-        label.setAttribute("y", y - 6);
-        label.setAttribute("class", "label");
-        label.textContent = seatNumber;
+          const label = document.createElementNS(svgNS, "text");
+          label.setAttribute("x", x);
+          label.setAttribute("y", y - 6);
+          label.setAttribute("class", "label");
+          label.textContent = seatNumber;
 
-        const nameLine1 = document.createElementNS(svgNS, "text");
-        nameLine1.setAttribute("x", x);
-        nameLine1.setAttribute("y", y + 6);
-        nameLine1.setAttribute("class", "name-line");
+          const nameLine1 = document.createElementNS(svgNS, "text");
+          nameLine1.setAttribute("x", x);
+          nameLine1.setAttribute("y", y + 6);
+          nameLine1.setAttribute("class", "name-line");
 
-        const nameLine2 = document.createElementNS(svgNS, "text");
-        nameLine2.setAttribute("x", x);
-        nameLine2.setAttribute("y", y + 16);
-        nameLine2.setAttribute("class", "name-line");
+          const nameLine2 = document.createElementNS(svgNS, "text");
+          nameLine2.setAttribute("x", x);
+          nameLine2.setAttribute("y", y + 16);
+          nameLine2.setAttribute("class", "name-line");
 
-        seatWrapper.appendChild(rect);
-        seatWrapper.appendChild(label);
-        seatWrapper.appendChild(nameLine1);
-        seatWrapper.appendChild(nameLine2);
-        seatGroup.appendChild(seatWrapper);
+          group.appendChild(rect);
+          group.appendChild(label);
+          group.appendChild(nameLine1);
+          group.appendChild(nameLine2);
+          seatGroup.appendChild(group);
 
-        seatWrapper.addEventListener("click", () => {
-          const input = prompt(`Assign a name to seat ${seatNumber} (Row ${row.label}, or type 'x' to blackout):`);
-          if (input === null) return;
-
-          const trimmed = input.trim().toLowerCase();
-
-          if (trimmed === "x") {
-            rect.style.fill = "#000";
-            rect.style.stroke = "#000";
-            label.setAttribute("visibility", "hidden");
-            nameLine1.setAttribute("visibility", "hidden");
-            nameLine2.setAttribute("visibility", "hidden");
-          } else {
-            rect.style.fill = "#ccc";
-            rect.style.stroke = "#999";
-
-            const words = trimmed.split(/\s+/);
-            const mid = Math.ceil(words.length / 2);
-            nameLine1.textContent = words.slice(0, mid).join(' ');
-            nameLine2.textContent = words.slice(mid).join(' ');
-
-            label.setAttribute("visibility", "visible");
-            nameLine1.setAttribute("visibility", "visible");
-            nameLine2.setAttribute("visibility", "visible");
-          }
-
-          const allData = {};
-          document.querySelectorAll('#seats > g').forEach(seat => {
-            const seatId = seat.querySelector('.label')?.textContent;
-            const r = seat.querySelector('rect');
-            const lines = seat.querySelectorAll('.name-line');
-
-            if (seatId) {
-              const isBlack = r.style.fill === "rgb(0, 0, 0)" || r.style.fill === "#000";
-              if (isBlack) {
-                allData[seatId] = "x";
-              } else {
-                allData[seatId] = `${lines[0]?.textContent || ""} ${lines[1]?.textContent || ""}`.trim();
-              }
+          group.addEventListener("click", () => {
+            const input = prompt(`Assign a name to seat ${seatId} (type 'x' to black out):`);
+            if (input === null) return;
+            const trimmed = input.trim();
+            if (trimmed.toLowerCase() === "x") {
+              rect.setAttribute("fill", "#000");
+              rect.setAttribute("stroke", "#000");
+              label.textContent = "";
+              nameLine1.textContent = "";
+              nameLine2.textContent = "";
+              assignments[seatId] = ["x"];
+            } else {
+              const words = trimmed.split(/\s+/);
+              const mid = Math.ceil(words.length / 2);
+              const line1 = words.slice(0, mid).join(" ");
+              const line2 = words.slice(mid).join(" ");
+              nameLine1.textContent = line1;
+              nameLine2.textContent = line2;
+              label.textContent = seatNumber;
+              rect.setAttribute("fill", "#ccc");
+              rect.setAttribute("stroke", "#999");
+              assignments[seatId] = [line1, line2];
             }
+            fetch("/save", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(assignments)
+            });
           });
+        } else {
+          const aisle = document.createElementNS(svgNS, "rect");
+          aisle.setAttribute("x", x - 10);
+          aisle.setAttribute("y", y - 10);
+          aisle.setAttribute("width", 20);
+          aisle.setAttribute("height", 20);
+          aisle.setAttribute("fill", "#eee");
+          aisle.setAttribute("stroke", "#aaa");
+          aisle.setAttribute("stroke-dasharray", "3 2");
+          seatGroup.appendChild(aisle);
+        }
 
-          fetch('/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(allData)
-          });
-        });
+        if (firstX === undefined) {
+          firstX = x;
+          firstY = y;
+        }
+        lastX = x;
+        lastY = y;
       });
 
       const leftLabel = document.createElementNS(svgNS, "text");
       leftLabel.setAttribute("x", firstX - 60);
-      leftLabel.setAttribute("y", row.y);
+      leftLabel.setAttribute("y", firstY);
       leftLabel.setAttribute("class", "row-label");
       leftLabel.textContent = row.label;
 
       const rightLabel = document.createElementNS(svgNS, "text");
       rightLabel.setAttribute("x", lastX + 60);
-      rightLabel.setAttribute("y", row.y);
+      rightLabel.setAttribute("y", lastY);
       rightLabel.setAttribute("class", "row-label");
       rightLabel.textContent = row.label;
 
@@ -201,5 +202,4 @@
       });
   </script>
 </body>
-</html>
 
