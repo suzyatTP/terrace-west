@@ -1,8 +1,3 @@
-flask
-flask-cors
-gunicorn
-flask
-flask_sqlalchemy
-flask_cors
-gunicorn
-psycopg2
+Flask
+Flask-Cors
+psycopg2-binary
