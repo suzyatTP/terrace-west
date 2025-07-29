@@ -1,63 +1,51 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
+from sqlalchemy import create_engine, Column, String
+from sqlalchemy.orm import declarative_base, sessionmaker
 import os
-import psycopg2
 
 app = Flask(__name__)
 CORS(app)
 
-# Connect to PostgreSQL
-def get_db_connection():
-    db_url = os.environ.get("terrace_west_db")
-    if not db_url:
-        raise Exception("Environment variable 'terrace_west_db' not set.")
-    return psycopg2.connect(db_url)
+# PostgreSQL connection from Render (environment variable)
+DATABASE_URL = os.environ.get("DATABASE_URL")  # Render injects this automatically
 
-# Create table if not exists
-def ensure_table():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS assignments (
-            seat_id TEXT PRIMARY KEY,
-            name TEXT
-        );
-    ''')
-    conn.commit()
-    cur.close()
-    conn.close()
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
 
-ensure_table()
+class SeatAssignment(Base):
+    __tablename__ = "seat_assignments"
+    seat_id = Column(String, primary_key=True)  # e.g., "94", "92"
+    name = Column(String)  # either "x" or a full name
+
+Base.metadata.create_all(bind=engine)
 
 @app.route('/')
-def serve_html():
-    return send_from_directory('.', 'index.html')
+def home():
+    with open("index.html", "r") as f:
+        return f.read()
 
 @app.route('/save', methods=['POST'])
 def save_assignments():
     data = request.get_json()
-    conn = get_db_connection()
-    cur = conn.cursor()
+    session = SessionLocal()
+
+    # Clear existing assignments
+    session.query(SeatAssignment).delete()
+
+    # Insert updated assignments
     for seat_id, name in data.items():
-        cur.execute('''
-            INSERT INTO assignments (seat_id, name)
-            VALUES (%s, %s)
-            ON CONFLICT (seat_id) DO UPDATE SET name = EXCLUDED.name;
-        ''', (seat_id, name if name != ["x"] else "x"))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"status": "success"})
+        session.add(SeatAssignment(seat_id=seat_id, name=name))
 
-@app.route('/load', methods=['GET'])
+    session.commit()
+    session.close()
+    return '', 204
+
+@app.route('/load')
 def load_assignments():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT seat_id, name FROM assignments;')
-    assignments = dict(cur.fetchall())
-    cur.close()
-    conn.close()
-    return jsonify(assignments)
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    session = SessionLocal()
+    rows = session.query(SeatAssignment).all()
+    data = {row.seat_id: row.name for row in rows}
+    session.close()
+    return jsonify(data)
