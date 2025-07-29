@@ -133,7 +133,6 @@
             nameLine2.setAttribute("visibility", "visible");
           }
 
-          // ✅ Save all seats after edit
           const allData = {};
           document.querySelectorAll('#seats > g').forEach(seat => {
             const seatId = seat.querySelector('.label')?.textContent;
@@ -143,9 +142,9 @@
             if (seatId) {
               const isBlack = r.style.fill === "rgb(0, 0, 0)" || r.style.fill === "#000";
               if (isBlack) {
-                allData[seatId] = ["x"];
+                allData[seatId] = "x";
               } else {
-                allData[seatId] = [lines[0]?.textContent || "", lines[1]?.textContent || ""];
+                allData[seatId] = `${lines[0]?.textContent || ""} ${lines[1]?.textContent || ""}`.trim();
               }
             }
           });
@@ -173,6 +172,36 @@
       labelGroup.appendChild(leftLabel);
       labelGroup.appendChild(rightLabel);
     });
+
+    // ✅ Load assignments AFTER all seats are created
+    fetch('/load')
+      .then(res => res.json())
+      .then(data => {
+        document.querySelectorAll('#seats > g').forEach(seat => {
+          const seatId = seat.querySelector('.label')?.textContent;
+          const rect = seat.querySelector('rect');
+          const lines = seat.querySelectorAll('.name-line');
+
+          if (seatId && data[seatId]) {
+            const name = data[seatId];
+            if (name === "x") {
+              rect.style.fill = "#000";
+              rect.style.stroke = "#000";
+              seat.querySelector('.label').setAttribute("visibility", "hidden");
+              lines.forEach(line => line.setAttribute("visibility", "hidden"));
+            } else {
+              rect.style.fill = "#ccc";
+              rect.style.stroke = "#999";
+              const words = name.split(/\s+/);
+              const mid = Math.ceil(words.length / 2);
+              lines[0].textContent = words.slice(0, mid).join(" ");
+              lines[1].textContent = words.slice(mid).join(" ");
+              seat.querySelector('.label').setAttribute("visibility", "visible");
+              lines.forEach(line => line.setAttribute("visibility", "visible"));
+            }
+          }
+        });
+      });
   </script>
 </body>
 </html>
