@@ -56,8 +56,8 @@
     const labelGroup = document.getElementById("row-labels");
 
     const rows = [
-      { label: 'B', y: 400, start: 92, count: 46 }, // Row B: 92 to 2
-      { label: 'A', y: 600, start: 94, count: 47 }  // Row A: 94 to 2
+      { label: 'B', y: 400, start: 92, count: 46 },
+      { label: 'A', y: 600, start: 94, count: 47 }
     ];
 
     rows.forEach(row => {
@@ -132,33 +132,32 @@
             nameLine1.setAttribute("visibility", "visible");
             nameLine2.setAttribute("visibility", "visible");
           }
-        });
-        // Auto-save all seats after every edit
-            const allData = {};
-            document.querySelectorAll('#seats > g').forEach(seat => {
-              const seatId = seat.querySelector('.label')?.textContent;
-              const rect = seat.querySelector('rect');
-              const texts = seat.querySelectorAll('.name-line');
 
-              if (seatId) {
-                const isBlack = rect.style.fill === "rgb(0, 0, 0)" || rect.style.fill === "#000";
-                if (isBlack) {
-                  allData[seatId] = ["x"];
-                } else {
-                  allData[seatId] = [texts[0]?.textContent || "", texts[1]?.textContent || ""];
-                }
+          // ✅ Save all seats after edit
+          const allData = {};
+          document.querySelectorAll('#seats > g').forEach(seat => {
+            const seatId = seat.querySelector('.label')?.textContent;
+            const r = seat.querySelector('rect');
+            const lines = seat.querySelectorAll('.name-line');
+
+            if (seatId) {
+              const isBlack = r.style.fill === "rgb(0, 0, 0)" || r.style.fill === "#000";
+              if (isBlack) {
+                allData[seatId] = ["x"];
+              } else {
+                allData[seatId] = [lines[0]?.textContent || "", lines[1]?.textContent || ""];
               }
-            });
+            }
+          });
 
-            fetch('/save', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(allData)
-            });
-
+          fetch('/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(allData)
+          });
+        });
       });
 
-      // Row labels & Attributes!
       const leftLabel = document.createElementNS(svgNS, "text");
       leftLabel.setAttribute("x", firstX - 60);
       leftLabel.setAttribute("y", row.y);
